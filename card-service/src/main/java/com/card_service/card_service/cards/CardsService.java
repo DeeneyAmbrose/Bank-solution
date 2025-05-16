@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -73,5 +74,122 @@ public class CardsService {
 
         return response;
     }
+
+    public EntityResponse<?> fetchCardById(Long cardId) {
+        EntityResponse<Card> response = new EntityResponse<>();
+        try {
+            Optional<Card> optionalCard = cardsRepository.findById(cardId);
+            if (optionalCard.isPresent()) {
+                Card card = optionalCard.get();
+                if ("N".equalsIgnoreCase(card.getDeletedFlag())) {
+                    response.setPayload(card);
+                    response.setMessage("Card fetched successfully");
+                    response.setStatusCode(HttpStatus.OK.value());
+                } else {
+                    response.setMessage("Card is marked as deleted");
+                    response.setStatusCode(HttpStatus.GONE.value()); // 410 Gone
+                }
+            } else {
+                response.setMessage("Card not found");
+                response.setStatusCode(HttpStatus.NOT_FOUND.value());
+            }
+        } catch (Exception e) {
+            response.setMessage("Error: " + e.getMessage());
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        }
+        return response;
+    }
+
+    public EntityResponse<?> editCard(Long cardId, CardDto cardDto) {
+        EntityResponse<Card> response = new EntityResponse<>();
+        try {
+            Optional<Card> optionalCard = cardsRepository.findById(cardId);
+            if (optionalCard.isPresent()) {
+                Card card = optionalCard.get();
+                if ("N".equalsIgnoreCase(card.getDeletedFlag())) {
+                    card.setCardAlias(cardDto.getCardAlias());
+
+                    cardsRepository.save(card);
+
+                    response.setPayload(card);
+                    response.setMessage("Card alias updated successfully");
+                    response.setStatusCode(HttpStatus.OK.value());
+                } else {
+                    response.setMessage("Card is marked as deleted");
+                    response.setStatusCode(HttpStatus.GONE.value()); // 410 Gone
+                }
+            } else {
+                response.setMessage("Card not found");
+                response.setStatusCode(HttpStatus.NOT_FOUND.value());
+            }
+        } catch (Exception e) {
+            response.setMessage("Error: " + e.getMessage());
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        }
+        return response;
+    }
+
+    public EntityResponse<?> deleteCard(Long cardId) {
+        EntityResponse<Card> response = new EntityResponse<>();
+        try {
+            Optional<Card> optionalCard = cardsRepository.findById(cardId);
+            if (optionalCard.isPresent()) {
+                Card card = optionalCard.get();
+                if ("N".equalsIgnoreCase(card.getDeletedFlag())) {
+                    card.setDeletedFlag("Y");
+                    cardsRepository.save(card);
+
+                    response.setPayload(card);
+                    response.setMessage("Card deleted successfully (soft delete)");
+                    response.setStatusCode(HttpStatus.OK.value());
+                }
+            } else {
+                response.setMessage("Card not found");
+                response.setStatusCode(HttpStatus.NOT_FOUND.value());
+            }
+        } catch (Exception e) {
+            response.setMessage("Error: " + e.getMessage());
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        }
+        return response;
+    }
+
+    public EntityResponse<?> searchCards(CardFilterRequest request) {
+        EntityResponse<List<Card>> response = new EntityResponse<>();
+        try {
+            int offset = request.getPage() * request.getSize();
+
+            List<Card> cards = cardsRepository.searchCardsNative(
+                    request.getCardAlias(),
+                    request.getType() != null ? request.getType().name() : null,
+                    request.getPan(),
+                    request.getSize(),
+                    offset
+            );
+
+            List<Card> result = cards.stream().map(card -> {
+                if (!Boolean.TRUE.equals(request.getShowSensitive())) {
+                    card.setPan(maskPan(card.getPan()));
+                    card.setCvv("***");
+                }
+                return card;
+            }).collect(Collectors.toList());
+
+            response.setPayload(result);
+            response.setMessage("Cards fetched successfully");
+            response.setStatusCode(HttpStatus.OK.value());
+        } catch (Exception e) {
+            response.setMessage("Error: " + e.getMessage());
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        }
+
+        return response;
+    }
+
+    private String maskPan(String pan) {
+        if (pan == null || pan.length() < 4) return "****";
+        return "**** **** **** " + pan.substring(pan.length() - 4);
+    }
+
 
 }
