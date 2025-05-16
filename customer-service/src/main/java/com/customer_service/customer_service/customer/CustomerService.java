@@ -14,7 +14,7 @@ public class CustomerService {
     @Autowired
     CustomerRepository customerRepository;
 
-    public EntityResponse<?> create(CustomerDto customerDto) {
+    public EntityResponse<Customer> create(CustomerDto customerDto) {
         EntityResponse<Customer> response = new EntityResponse<>();
         try {
             Customer customer = new Customer();
@@ -35,7 +35,7 @@ public class CustomerService {
         return response;
     }
 
-    public EntityResponse<?> fetchAll() {
+    public EntityResponse<List<Customer>> fetchAll() {
         EntityResponse<List<Customer>> response = new EntityResponse<>();
         try {
             List<Customer> customers = customerRepository.findAll();
@@ -43,10 +43,11 @@ public class CustomerService {
                 response.setPayload(null);
                 response.setMessage("Not found");
                 response.setStatusCode(HttpStatus.NOT_FOUND.value());
+            }else {
+                response.setPayload(customers);
+                response.setMessage("Customers fetched successfully");
+                response.setStatusCode(HttpStatus.OK.value());
             }
-            response.setPayload(customers);
-            response.setMessage("Customers fetched successfully");
-            response.setStatusCode(HttpStatus.OK.value());
 
         } catch (Exception e) {
             response.setMessage("Error: " + e.getMessage());
@@ -76,7 +77,7 @@ public class CustomerService {
         return response;
     }
 
-    public EntityResponse<?> editCustomer(Long customerId, CustomerDto updatedCustomerData) {
+    public EntityResponse<Customer> editCustomer(Long customerId, CustomerDto updatedCustomerData) {
         EntityResponse<Customer> response = new EntityResponse<>();
         try {
             Optional<Customer> optionalCustomer = customerRepository.findById(customerId);
@@ -106,7 +107,7 @@ public class CustomerService {
         return response;
     }
 
-    public EntityResponse<?> deleteCustomer(Long customerId) {
+    public EntityResponse<Customer> deleteCustomer(Long customerId) {
         EntityResponse<Customer> response = new EntityResponse<>();
         try {
             Optional<Customer> optionalCustomer = customerRepository.findById(customerId);
@@ -132,7 +133,7 @@ public class CustomerService {
         return response;
     }
 
-    public EntityResponse<?> searchCustomers(String keyword) {
+    public EntityResponse<List<Customer>> searchCustomers(String keyword) {
         EntityResponse<List<Customer>> response = new EntityResponse<>();
         try {
             List<Customer> customers = customerRepository.findByKeyword(keyword);
