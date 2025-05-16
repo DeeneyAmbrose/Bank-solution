@@ -26,6 +26,7 @@ public class CustomerControllerTests {
     private CustomerService customerService;
 
     private CustomerDto sampleDto;
+
     private Customer sampleCustomer;
 
     @BeforeEach

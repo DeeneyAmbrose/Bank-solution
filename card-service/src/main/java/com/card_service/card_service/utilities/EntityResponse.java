@@ -8,4 +8,6 @@ public class EntityResponse<T> {
     private String message;
     private Integer statusCode = HttpStatus.OK.value();
     private T payload;
+
+
 }

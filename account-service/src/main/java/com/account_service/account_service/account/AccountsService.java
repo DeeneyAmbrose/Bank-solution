@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -26,7 +27,7 @@ public class AccountsService {
 
 
 
-    public EntityResponse<?> createAccount(AccountDto dto) {
+    public EntityResponse<Account> createAccount(AccountDto dto) {
         EntityResponse<Account> response = new EntityResponse<>();
 
         try {
@@ -72,7 +73,7 @@ public class AccountsService {
         return response;
     }
 
-    public EntityResponse<?> fetchAccountById(Long accountId) {
+    public EntityResponse<Account> fetchAccountById(Long accountId) {
         EntityResponse<Account> response = new EntityResponse<>();
 
         try {
@@ -138,7 +139,7 @@ public class AccountsService {
         return response;
     }
 
-    public EntityResponse<?> deleteAccount(Long accountId) {
+    public EntityResponse<Account> deleteAccount(Long accountId) {
         EntityResponse<Account> response = new EntityResponse<>();
         try {
             Optional<Account> optionalAccount = accountsRepository.findById(accountId);
@@ -161,7 +162,7 @@ public class AccountsService {
         return response;
     }
 
-    public EntityResponse<?> searchAccounts(AccountSearchRequest request) {
+    public EntityResponse<Page<Account>> searchAccounts(AccountSearchRequest request) {
         EntityResponse<Page<Account>> response = new EntityResponse<>();
         try {
             Pageable pageable = PageRequest.of(request.getPage(), request.getSize());

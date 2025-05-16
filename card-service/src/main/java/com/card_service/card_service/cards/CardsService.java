@@ -23,7 +23,7 @@ public class CardsService {
     @Value("${account-service.url}")
     private String accountServiceUrl;
 
-    public EntityResponse<?> createCard(CardDto dto) {
+    public EntityResponse<Card> createCard(CardDto dto) {
         EntityResponse<Card> response = new EntityResponse<>();
 
         try {
@@ -75,7 +75,7 @@ public class CardsService {
         return response;
     }
 
-    public EntityResponse<?> fetchCardById(Long cardId) {
+    public EntityResponse<Card> fetchCardById(Long cardId) {
         EntityResponse<Card> response = new EntityResponse<>();
         try {
             Optional<Card> optionalCard = cardsRepository.findById(cardId);
@@ -100,7 +100,7 @@ public class CardsService {
         return response;
     }
 
-    public EntityResponse<?> editCard(Long cardId, CardDto cardDto) {
+    public EntityResponse<Card> editCard(Long cardId, CardDto cardDto) {
         EntityResponse<Card> response = new EntityResponse<>();
         try {
             Optional<Card> optionalCard = cardsRepository.findById(cardId);
@@ -129,7 +129,7 @@ public class CardsService {
         return response;
     }
 
-    public EntityResponse<?> deleteCard(Long cardId) {
+    public EntityResponse<Card> deleteCard(Long cardId) {
         EntityResponse<Card> response = new EntityResponse<>();
         try {
             Optional<Card> optionalCard = cardsRepository.findById(cardId);
@@ -154,7 +154,7 @@ public class CardsService {
         return response;
     }
 
-    public EntityResponse<?> searchCards(CardFilterRequest request) {
+    public EntityResponse<List<Card>> searchCards(CardFilterRequest request) {
         EntityResponse<List<Card>> response = new EntityResponse<>();
         try {
             int offset = request.getPage() * request.getSize();
