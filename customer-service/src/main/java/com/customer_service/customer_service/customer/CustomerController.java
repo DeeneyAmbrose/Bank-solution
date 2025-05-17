@@ -1,8 +1,14 @@
 package com.customer_service.customer_service.customer;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/customers")
@@ -23,10 +29,18 @@ public class CustomerController {
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
     @GetMapping("search")
-    public ResponseEntity<?> searchCustomers(@RequestParam("q") String keyword) {
-        var response = customerService.searchCustomers(keyword);
+    public ResponseEntity<?> searchCustomers(
+            @RequestParam("q") String keyword,
+            @RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("created_at").descending());
+        var response = customerService.searchCustomers(keyword, startDate, endDate, pageable);
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
+
 
     @GetMapping()
     public ResponseEntity<?> fetchById(@RequestParam Long customerId) {

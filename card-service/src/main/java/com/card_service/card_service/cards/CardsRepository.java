@@ -26,4 +26,5 @@ public interface CardsRepository extends JpaRepository<Card, Long> {
             @Param("offset") int offset
     );
 
+    List<Card> findByAccountId(Long accountId);
 }

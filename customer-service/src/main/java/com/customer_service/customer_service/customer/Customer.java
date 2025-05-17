@@ -3,6 +3,7 @@ package com.customer_service.customer_service.customer;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,9 +24,9 @@ public class Customer {
 
     private String otherName;
 
-    private LocalDateTime createdAt;
+    private LocalDate createdAt;
 
-    private LocalDateTime updatedAt;
+    private LocalDate updatedAt;
 
     @Column(nullable = false)
     private String deletedFlag = "N";

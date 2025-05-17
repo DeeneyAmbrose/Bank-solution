@@ -7,8 +7,13 @@ import com.customer_service.customer_service.utilities.EntityResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 public class CustomerServiceTests {
@@ -37,7 +42,7 @@ public class CustomerServiceTests {
         sampleCustomer.setFirstName("John");
         sampleCustomer.setLastName("Doe");
         sampleCustomer.setOtherName("M");
-        sampleCustomer.setCreatedAt(LocalDateTime.now());
+        sampleCustomer.setCreatedAt(LocalDate.now());
         sampleCustomer.setDeletedFlag("N");
     }
 
@@ -144,24 +149,38 @@ public class CustomerServiceTests {
     }
 
     @Test
-    void searchCustomers_WhenFound_ShouldReturnList() {
-        when(customerRepository.findByKeyword("John")).thenReturn(List.of(sampleCustomer));
+    void searchCustomers_WhenFound_ShouldReturnPagedResult() {
+        Page<Customer> page = new PageImpl<>(List.of(sampleCustomer), PageRequest.of(0, 10), 1);
+        when(customerRepository.findByKeywordAndDateRange(
+                eq("John"), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(page);
 
-        EntityResponse<?> response = customerService.searchCustomers("John");
+        EntityResponse<Map<String, Object>> response = customerService.searchCustomers("John", null, null, PageRequest.of(0, 10));
 
         assertEquals(HttpStatus.OK.value(), response.getStatusCode());
         assertEquals("Customers found", response.getMessage());
         assertNotNull(response.getPayload());
+
+        Map<String, Object> payload = response.getPayload();
+        assertNotNull(payload.get("content"));
+        assertEquals(1, ((List<?>)payload.get("content")).size());
+        assertEquals(0, payload.get("currentPage"));
+        assertEquals(1L, payload.get("totalItems"));
+        assertEquals(1, payload.get("totalPages"));
     }
 
     @Test
     void searchCustomers_WhenNotFound_ShouldReturnNotFound() {
-        when(customerRepository.findByKeyword("Unknown")).thenReturn(Collections.emptyList());
+        Page<Customer> emptyPage = Page.empty();
+        when(customerRepository.findByKeywordAndDateRange(
+                eq("Unknown"), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(emptyPage);
 
-        EntityResponse<?> response = customerService.searchCustomers("Unknown");
+        EntityResponse<Map<String, Object>> response = customerService.searchCustomers("Unknown", null, null, PageRequest.of(0, 10));
 
         assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode());
         assertEquals("No customers found", response.getMessage());
         assertNull(response.getPayload());
     }
+
 }

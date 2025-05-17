@@ -23,6 +23,11 @@
 			<scope>test</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+		</dependency>
+
 		<!-- Mockito Core -->
 		<dependency>
 			<groupId>org.mockito</groupId>

@@ -9,4 +9,6 @@ public class CardDto {
     private CardType type;
     private String pan;
     private String cvv;
+
+
 }

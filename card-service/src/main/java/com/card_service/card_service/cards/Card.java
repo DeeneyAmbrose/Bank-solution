@@ -30,4 +30,5 @@ public class Card {
 
     @Column(nullable = false)
     private Long accountId;
+
 }

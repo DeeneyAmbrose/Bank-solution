@@ -5,12 +5,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.*;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.LocalDate;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -111,20 +115,48 @@ public class CustomerControllerTests {
 
     @Test
     void searchCustomers_ShouldReturnOk() throws Exception {
-        EntityResponse<List<Customer>> response = new EntityResponse<>();
+        // Prepare a Page<Customer> with sample data
+        Page<Customer> customerPage = new PageImpl<>(Collections.singletonList(sampleCustomer));
+
+        // Build the Map<String, Object> payload that matches your service method
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", customerPage.getContent());
+        result.put("currentPage", customerPage.getNumber());
+        result.put("totalItems", customerPage.getTotalElements());
+        result.put("totalPages", customerPage.getTotalPages());
+
+        // Prepare the response to return from the mock
+        EntityResponse<Map<String, Object>> response = new EntityResponse<>();
         response.setStatusCode(200);
         response.setMessage("Customers found");
-        response.setPayload(Collections.singletonList(sampleCustomer));
+        response.setPayload(result);
 
-        when(customerService.searchCustomers("John")).thenReturn(response);
+        // Mock the service method call with proper argument matchers
+        when(customerService.searchCustomers(
+                eq("John"),
+                isNull(LocalDate.class),
+                isNull(LocalDate.class),
+                any(Pageable.class))
+        ).thenReturn(response);
 
+        // Perform the request and verify response JSON paths
         mockMvc.perform(get("/customers/search")
-                        .param("q", "John"))
+                        .param("q", "John")
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Customers found"))
-                .andExpect(jsonPath("$.payload[0].firstName").value("John"));
+                .andExpect(jsonPath("$.payload.content[0].firstName").value("John"))
+                .andExpect(jsonPath("$.payload.currentPage").value(0))
+                .andExpect(jsonPath("$.payload.totalItems").value(1))
+                .andExpect(jsonPath("$.payload.totalPages").value(1));
 
-        verify(customerService).searchCustomers("John");
+        // Verify the service call
+        verify(customerService).searchCustomers(
+                eq("John"),
+                isNull(LocalDate.class),
+                isNull(LocalDate.class),
+                any(Pageable.class));
     }
 
 

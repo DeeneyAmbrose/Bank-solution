@@ -2,11 +2,16 @@ package com.customer_service.customer_service.customer;
 
 import com.customer_service.customer_service.utilities.EntityResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -21,7 +26,7 @@ public class CustomerService {
             customer.setFirstName(customerDto.getFirstName());
             customer.setLastName(customerDto.getLastName());
             customer.setOtherName(customerDto.getOtherName());
-            customer.setCreatedAt(LocalDateTime.now());
+            customer.setCreatedAt(LocalDate.now());
             customer.setDeletedFlag("N");
             Customer savedCustomer = customerRepository.save(customer);
 
@@ -92,7 +97,7 @@ public class CustomerService {
             existingCustomer.setFirstName(updatedCustomerData.getFirstName());
             existingCustomer.setLastName(updatedCustomerData.getLastName());
             existingCustomer.setOtherName(updatedCustomerData.getOtherName());
-            existingCustomer.setUpdatedAt(LocalDateTime.now());
+            existingCustomer.setUpdatedAt(LocalDate.now());
 
             Customer savedCustomer = customerRepository.save(existingCustomer);
 
@@ -133,17 +138,25 @@ public class CustomerService {
         return response;
     }
 
-    public EntityResponse<List<Customer>> searchCustomers(String keyword) {
-        EntityResponse<List<Customer>> response = new EntityResponse<>();
-        try {
-            List<Customer> customers = customerRepository.findByKeyword(keyword);
+    public EntityResponse<Map<String, Object>> searchCustomers(
+            String keyword, LocalDate startDate, LocalDate endDate, Pageable pageable) {
 
-            if (customers.isEmpty()) {
+        EntityResponse<Map<String, Object>> response = new EntityResponse<>();
+        try {
+            Page<Customer> customersPage = customerRepository.findByKeywordAndDateRange(keyword, startDate, endDate, pageable);
+
+            if (customersPage.isEmpty()) {
                 response.setPayload(null);
                 response.setMessage("No customers found");
                 response.setStatusCode(HttpStatus.NOT_FOUND.value());
             } else {
-                response.setPayload(customers);
+                Map<String, Object> result = new HashMap<>();
+                result.put("content", customersPage.getContent());
+                result.put("currentPage", customersPage.getNumber());
+                result.put("totalItems", customersPage.getTotalElements());
+                result.put("totalPages", customersPage.getTotalPages());
+
+                response.setPayload(result);
                 response.setMessage("Customers found");
                 response.setStatusCode(HttpStatus.OK.value());
             }
@@ -155,8 +168,6 @@ public class CustomerService {
         }
         return response;
     }
-
-
 
 
 

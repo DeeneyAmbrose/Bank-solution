@@ -27,30 +27,45 @@ public class CardsService {
         EntityResponse<Card> response = new EntityResponse<>();
 
         try {
-            ResponseEntity<EntityResponse<AccountDto>> customerResponse =
+            // 1. Validate account existence
+            ResponseEntity<EntityResponse<AccountDto>> accountResponse =
                     restTemplate.exchange(
                             accountServiceUrl + "accounts?accountId=" + dto.getAccountId(),
                             HttpMethod.GET,
                             null,
                             new ParameterizedTypeReference<>() {
-                            }
-                    );
+                            });
 
-            if (!customerResponse.getStatusCode().is2xxSuccessful() || customerResponse.getBody() == null) {
-                response.setMessage("Customer not found");
+            if (!accountResponse.getStatusCode().is2xxSuccessful() || accountResponse.getBody() == null) {
+                response.setMessage("Account not found");
                 response.setStatusCode(HttpStatus.NOT_FOUND.value());
                 return response;
             }
 
-            List<Card> existingCards = cardsRepository.findAll().stream()
-                    .filter(c -> c.getAccountId().equals(dto.getAccountId()) )
-                    .toList();
+            // 2. Validate account belongs to the provided customer
+            AccountDto accountDto = accountResponse.getBody().getPayload();
+            if (!accountDto.getCustomerId().equals(accountResponse.getBody().getPayload().getCustomerId())) {
+                response.setMessage("Account does not belong to the provided customer");
+                response.setStatusCode(HttpStatus.BAD_REQUEST.value());
+                return response;
+            }
 
+            // 3. Fetch cards for this account
+            List<Card> existingCards = cardsRepository.findByAccountId(dto.getAccountId());
+
+            // 4. Check max 2 cards rule
+            if (existingCards.size() >= 2) {
+                response.setMessage("Maximum of 2 cards allowed per account");
+                response.setStatusCode(HttpStatus.BAD_REQUEST.value());
+                return response;
+            }
+
+            // 5. Ensure only one card per type
             boolean hasSameType = existingCards.stream()
                     .anyMatch(c -> c.getType().equals(dto.getType()));
 
-            if (existingCards.size() >= 2 || hasSameType) {
-                response.setMessage("Card limit reached or card type already exists for this account");
+            if (hasSameType) {
+                response.setMessage("Card of this type already exists for the account");
                 response.setStatusCode(HttpStatus.CONFLICT.value());
                 return response;
             }
@@ -74,6 +89,7 @@ public class CardsService {
 
         return response;
     }
+
 
     public EntityResponse<Card> fetchCardById(Long cardId) {
         EntityResponse<Card> response = new EntityResponse<>();
