@@ -16,8 +16,8 @@ public class CardsController {
     }
 
     @GetMapping
-    public ResponseEntity<?> fetchCardById(@RequestParam Long cardId) {
-        var response= cardsService.fetchCardById(cardId);
+    public ResponseEntity<?> fetchCardById(@RequestParam Long cardId, @RequestParam boolean showSensitive) {
+        var response= cardsService.fetchCardById(cardId, showSensitive);
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
 

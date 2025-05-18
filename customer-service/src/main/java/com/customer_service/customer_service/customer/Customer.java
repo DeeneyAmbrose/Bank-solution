@@ -28,6 +28,8 @@ public class Customer {
 
     private LocalDate updatedAt;
 
+    private String customerId;
+
     @Column(nullable = false)
     private String deletedFlag = "N";
 }

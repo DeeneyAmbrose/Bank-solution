@@ -13,7 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
 import java.util.Optional;
 
 @Service
@@ -25,13 +27,11 @@ public class AccountsService {
     @Value("${customer-service.url}")
     private String customerServiceUrl;
 
-
-
-    public EntityResponse<Account> createAccount(AccountDto dto) {
+    public EntityResponse<Account> createAccount(AccountRequest dto) {
         EntityResponse<Account> response = new EntityResponse<>();
 
         try {
-            // Call customer-service to validate customerId
+            // Validate customer
             ResponseEntity<EntityResponse<CustomerDto>> customerResponse =
                     restTemplate.exchange(
                             customerServiceUrl + "customers?customerId=" + dto.getCustomerId(),
@@ -47,19 +47,30 @@ public class AccountsService {
                 return response;
             }
 
-            // ✅ Check if IBAN already exists
-            Optional<Account> existingAccount = accountsRepository.findByIban(dto.getIban());
+            // Generate account number
+            String bankCode = "11";
+            String branchCode = "001";
+            String prefix = bankCode + branchCode + LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM"));
+            String lastAccountNumber = accountsRepository.findLastAccountNumberByPrefix(prefix);
+            String accountNumber = generateAccountNumber(bankCode, branchCode, lastAccountNumber);
+
+            // Generate IBAN
+            String iban = generateIban("KE", bankCode, branchCode, accountNumber);
+
+            // Check if IBAN already exists
+            Optional<Account> existingAccount = accountsRepository.findByIban(iban);
             if (existingAccount.isPresent()) {
                 response.setMessage("IBAN already exists");
                 response.setStatusCode(HttpStatus.CONFLICT.value());
                 return response;
             }
 
-            // Proceed to save the account
+            // Save account
             Account account = new Account();
             account.setCustomerId(dto.getCustomerId());
-            account.setIban(dto.getIban());
+            account.setIban(iban);
             account.setBicSwift(dto.getBicSwift());
+            account.setAccountId(accountNumber);
             accountsRepository.save(account);
 
             response.setPayload(account);
@@ -73,20 +84,50 @@ public class AccountsService {
         return response;
     }
 
-    public EntityResponse<Account> fetchAccountById(Long accountId) {
-        EntityResponse<Account> response = new EntityResponse<>();
+
+    public String generateIban(String countryCode, String bankCode, String branchCode, String accountNumber) {
+        String base = bankCode + branchCode + accountNumber;
+        String checkDigits = "29";
+        return countryCode + checkDigits + base;
+    }
+
+
+
+    public  String generateAccountNumber(String bankCode, String branchCode, String lastAccountNumber) {
+            String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM"));
+            int nextNumber = 1;
+
+            if (lastAccountNumber != null && lastAccountNumber.startsWith(bankCode + branchCode + datePart)) {
+                String sequence = lastAccountNumber.substring((bankCode + branchCode + datePart).length());
+                nextNumber = Integer.parseInt(sequence) + 1;
+            }
+
+            return bankCode + branchCode + datePart + String.format("%05d", nextNumber);
+        }
+
+
+
+    public EntityResponse<AccountDto> fetchAccountById(String accountId) {
+        EntityResponse<AccountDto> response = new EntityResponse<>();
 
         try {
-            Optional<Account> optionalAccount = accountsRepository.findById(accountId);
+            Optional<Account> optionalAccount = accountsRepository.findByAccountId(accountId);
 
             if (optionalAccount.isPresent()) {
                 Account account = optionalAccount.get();
 
                 if ("Y".equalsIgnoreCase(account.getDeletedFlag())) {
                     response.setMessage("Account has been deleted");
-                    response.setStatusCode(HttpStatus.GONE.value()); // 410 Gone
+                    response.setStatusCode(HttpStatus.GONE.value());
                 } else {
-                    response.setPayload(account);
+                    // Map entity to DTO
+                    AccountDto dto = new AccountDto();
+                    dto.setBicSwift(account.getBicSwift());
+                    dto.setCustomerId(account.getCustomerId());
+                    dto.setAccountId(account.getAccountId());
+
+
+                    response.setPayload(dto);
                     response.setMessage("Account fetched successfully");
                     response.setStatusCode(HttpStatus.OK.value());
                 }
@@ -111,14 +152,12 @@ public class AccountsService {
             if (optionalAccount.isPresent()) {
                 Account existingAccount = optionalAccount.get();
 
-                // Check if the account has been marked as deleted
                 if ("Y".equalsIgnoreCase(existingAccount.getDeletedFlag())) {
                     response.setMessage("Cannot edit a deleted account");
                     response.setStatusCode(HttpStatus.GONE.value()); // 410 Gone
                     return response;
                 }
 
-                existingAccount.setIban(accountDto.getIban());
                 existingAccount.setBicSwift(accountDto.getBicSwift());
 
                 accountsRepository.save(existingAccount);

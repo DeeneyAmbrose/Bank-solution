@@ -3,8 +3,7 @@ import com.card_service.card_service.utilities.EntityResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+
 import org.springframework.http.ResponseEntity;
 
 import java.util.ArrayList;
@@ -14,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 public class CardsControllerTests {
-
     @Mock
     private CardsService cardsService;
 
@@ -49,6 +47,7 @@ public class CardsControllerTests {
     @Test
     void fetchCardById_shouldReturnResponseFromService() {
         Long cardId = 1L;
+        boolean showSensitive = false; // match controller signature
         Card sampleCard = new Card();
 
         EntityResponse<Card> responseFromService = new EntityResponse<>();
@@ -56,14 +55,14 @@ public class CardsControllerTests {
         responseFromService.setMessage("Card found");
         responseFromService.setPayload(sampleCard);
 
-        when(cardsService.fetchCardById(cardId)).thenReturn(responseFromService);
+        when(cardsService.fetchCardById(cardId, showSensitive)).thenReturn(responseFromService);
 
-        ResponseEntity<?> response = cardsController.fetchCardById(cardId);
+        ResponseEntity<?> response = cardsController.fetchCardById(cardId, showSensitive);
 
         assertEquals(200, response.getStatusCodeValue());
         assertEquals(responseFromService, response.getBody());
 
-        verify(cardsService).fetchCardById(cardId);
+        verify(cardsService).fetchCardById(cardId, showSensitive);
     }
 
     @Test
@@ -115,25 +114,7 @@ public class CardsControllerTests {
         int page = 0;
         int size = 5;
 
-        // Prepare card with sensitive data
-        Card rawCard = new Card();
-        rawCard.setPan(pan);
-        rawCard.setCvv("123");
-        rawCard.setCardAlias(cardAlias);
-
-        // Simulate masked card as returned by the service (what the controller would receive)
-        Card maskedCard = new Card();
-        maskedCard.setPan("**** **** **** 3456");
-        maskedCard.setCvv("***");
-        maskedCard.setCardAlias(cardAlias);
-
-        List<Card> maskedCardList = new ArrayList<>();
-        maskedCardList.add(maskedCard);
-
-        EntityResponse<List<Card>> responseFromService = new EntityResponse<>();
-        responseFromService.setStatusCode(200);
-        responseFromService.setMessage("Masked results");
-        responseFromService.setPayload(maskedCardList);
+        EntityResponse<List<Card>> responseFromService = getListEntityResponse(pan, cardAlias);
 
         when(cardsService.searchCards(any(CardFilterRequest.class))).thenReturn(responseFromService);
 
@@ -158,6 +139,28 @@ public class CardsControllerTests {
         assertEquals(cardAlias, returnedCard.getCardAlias());
 
         verify(cardsService).searchCards(any(CardFilterRequest.class));
+    }
+
+    private static EntityResponse<List<Card>> getListEntityResponse(String pan, String cardAlias) {
+        Card rawCard = new Card();
+        rawCard.setPan(pan);
+        rawCard.setCvv("123");
+        rawCard.setCardAlias(cardAlias);
+
+        // Simulate masked card as returned by the service (what the controller would receive)
+        Card maskedCard = new Card();
+        maskedCard.setPan("**** **** **** 3456");
+        maskedCard.setCvv("***");
+        maskedCard.setCardAlias(cardAlias);
+
+        List<Card> maskedCardList = new ArrayList<>();
+        maskedCardList.add(maskedCard);
+
+        EntityResponse<List<Card>> responseFromService = new EntityResponse<>();
+        responseFromService.setStatusCode(200);
+        responseFromService.setMessage("Masked results");
+        responseFromService.setPayload(maskedCardList);
+        return responseFromService;
     }
 
 }

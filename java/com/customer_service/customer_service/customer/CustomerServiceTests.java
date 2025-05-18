@@ -47,35 +47,45 @@ public class CustomerServiceTests {
     }
 
     @Test
-    void createCustomer_ShouldReturnCreatedCustomer() {
-        CustomerDto dto = new CustomerDto();
-        dto.setFirstName("John");
-        dto.setLastName("Doe");
-        dto.setOtherName("M");
+    void create_ShouldSaveCustomer() {
+        when(customerRepository.save(any(Customer.class))).thenReturn(sampleCustomer);
 
-        Customer savedCustomer = new Customer();
-        savedCustomer.setCustomerId("CUS202500001");
-        savedCustomer.setFirstName("John");
-        savedCustomer.setLastName("Doe");
-        savedCustomer.setOtherName("M");
-        savedCustomer.setDeletedFlag("N");
-
-        when(customerRepository.findLastCustomerIdForYear(anyString())).thenReturn(null);
-        when(customerRepository.save(any(Customer.class))).thenReturn(savedCustomer);
-
-        EntityResponse<Customer> response = customerService.create(dto);
+        EntityResponse<?> response = customerService.create(sampleDto);
 
         assertEquals(HttpStatus.CREATED.value(), response.getStatusCode());
         assertEquals("Customer created successfully", response.getMessage());
-        assertEquals("John", response.getPayload().getFirstName());
-        assertNotNull(response.getPayload().getCustomerId());
+        assertTrue(response.getPayload() instanceof Customer);
+        verify(customerRepository).save(any(Customer.class));
+    }
+
+    @Test
+    void fetchAll_WhenEmpty_ShouldReturnNotFound() {
+        when(customerRepository.findAll()).thenReturn(Collections.emptyList());
+
+        EntityResponse<?> response = customerService.fetchAll();
+
+        assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode());
+        assertEquals("Not found", response.getMessage());
+        assertNull(response.getPayload());
+    }
+
+    @Test
+    void fetchAll_WhenNotEmpty_ShouldReturnCustomers() {
+        when(customerRepository.findAll()).thenReturn(List.of(sampleCustomer));
+
+        EntityResponse<?> response = customerService.fetchAll();
+
+        assertEquals(HttpStatus.OK.value(), response.getStatusCode());
+        assertEquals("Customers fetched successfully", response.getMessage());
+        assertNotNull(response.getPayload());
+        verify(customerRepository).findAll();
     }
 
     @Test
     void fetchById_WhenFound_ShouldReturnDto() {
-        when(customerRepository.findByCustomerId("CUS202500001")).thenReturn(sampleCustomer);
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(sampleCustomer));
 
-        EntityResponse<CustomerDto> response = customerService.fetchById("CUS202500001");
+        EntityResponse<CustomerDto> response = customerService.fetchById(1L);
 
         assertEquals(HttpStatus.OK.value(), response.getStatusCode());
         assertEquals("Customer fetched successfully", response.getMessage());
@@ -84,22 +94,21 @@ public class CustomerServiceTests {
 
     @Test
     void fetchById_WhenNotFound_ShouldReturnNotFound() {
-        when(customerRepository.findByCustomerId("CUS999999999")).thenReturn(null);
+        when(customerRepository.findById(2L)).thenReturn(Optional.empty());
 
-        EntityResponse<CustomerDto> response = customerService.fetchById("CUS999999999");
+        EntityResponse<CustomerDto> response = customerService.fetchById(2L);
 
         assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode());
         assertEquals("Customer not found", response.getMessage());
         assertNull(response.getPayload());
     }
 
-    // Test for editCustomer(Long customerId, CustomerDto updatedCustomerData)
     @Test
     void editCustomer_WhenCustomerExists_ShouldUpdate() {
         when(customerRepository.findById(1L)).thenReturn(Optional.of(sampleCustomer));
         when(customerRepository.save(any(Customer.class))).thenReturn(sampleCustomer);
 
-        EntityResponse<Customer> response = customerService.editCustomer(1L, sampleDto);
+        EntityResponse<?> response = customerService.editCustomer(1L, sampleDto);
 
         assertEquals(HttpStatus.OK.value(), response.getStatusCode());
         assertEquals("Customer updated successfully", response.getMessage());
@@ -110,19 +119,18 @@ public class CustomerServiceTests {
     void editCustomer_WhenCustomerNotFound_ShouldReturnNotFound() {
         when(customerRepository.findById(1L)).thenReturn(Optional.empty());
 
-        EntityResponse<Customer> response = customerService.editCustomer(1L, sampleDto);
+        EntityResponse<?> response = customerService.editCustomer(1L, sampleDto);
 
         assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode());
         assertEquals("Customer not found", response.getMessage());
     }
 
-    // Test for deleteCustomer(Long customerId)
     @Test
     void deleteCustomer_WhenFound_ShouldSoftDelete() {
         when(customerRepository.findById(1L)).thenReturn(Optional.of(sampleCustomer));
         when(customerRepository.save(any(Customer.class))).thenReturn(sampleCustomer);
 
-        EntityResponse<Customer> response = customerService.deleteCustomer(1L);
+        EntityResponse<?> response = customerService.deleteCustomer(1L);
 
         assertEquals(HttpStatus.OK.value(), response.getStatusCode());
         assertEquals("Customer deleted successfully (soft delete)", response.getMessage());
@@ -134,7 +142,7 @@ public class CustomerServiceTests {
     void deleteCustomer_WhenNotFound_ShouldReturnNotFound() {
         when(customerRepository.findById(1L)).thenReturn(Optional.empty());
 
-        EntityResponse<Customer> response = customerService.deleteCustomer(1L);
+        EntityResponse<?> response = customerService.deleteCustomer(1L);
 
         assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode());
         assertEquals("Customer not found", response.getMessage());

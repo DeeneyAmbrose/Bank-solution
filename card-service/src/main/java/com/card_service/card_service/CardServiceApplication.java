@@ -11,6 +11,10 @@ import org.springframework.web.client.RestTemplate;
 public class CardServiceApplication implements CommandLineRunner {
 
 	public static void main(String[] args) {
+
+		String date = java.time.LocalDate.now().toString();
+		System.setProperty("log.folder", "card-service/logs");
+		System.setProperty("log.filename", date);
 		SpringApplication.run(CardServiceApplication.class, args);
 	}
 

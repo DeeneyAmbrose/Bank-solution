@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
@@ -31,5 +32,8 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
             Pageable pageable);
 
 
+    @Query(value = "SELECT customer_id FROM customer WHERE customer_id LIKE (:prefix || '%') ORDER BY customer_id DESC LIMIT 1", nativeQuery = true)
+    String findLastCustomerIdForYear(@Param("prefix") String prefix);
 
+    Customer findByCustomerId(String customerId);
 }

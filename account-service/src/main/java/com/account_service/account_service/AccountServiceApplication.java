@@ -11,6 +11,9 @@ import org.springframework.web.client.RestTemplate;
 public class AccountServiceApplication  implements CommandLineRunner {
 
 	public static void main(String[] args) {
+		String date = java.time.LocalDate.now().toString();
+		System.setProperty("log.folder", "account-service/logs");
+		System.setProperty("log.filename", date);
 		SpringApplication.run(AccountServiceApplication.class, args);
 	}
 	@Override

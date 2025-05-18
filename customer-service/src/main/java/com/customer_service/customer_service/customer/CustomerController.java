@@ -43,7 +43,7 @@ public class CustomerController {
 
 
     @GetMapping()
-    public ResponseEntity<?> fetchById(@RequestParam Long customerId) {
+    public ResponseEntity<?> fetchByCustomerId(@RequestParam String customerId) {
         var response= customerService.fetchById(customerId);
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }

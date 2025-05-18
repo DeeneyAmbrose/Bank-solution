@@ -29,28 +29,34 @@ public class AccountControllerTests {
 
     @Test
     void createAccount_shouldReturnResponseFromService() {
-        AccountDto dto = new AccountDto();
+        AccountRequest request = new AccountRequest();  // changed from AccountDto
         EntityResponse<Account> responseFromService = new EntityResponse<>();
         responseFromService.setStatusCode(201);
         responseFromService.setMessage("Created");
         responseFromService.setPayload(new Account());
 
-        when(accountsService.createAccount(dto)).thenReturn(responseFromService);
+        when(accountsService.createAccount(request)).thenReturn(responseFromService);
 
-        ResponseEntity<?> response = accountController.createAccount(dto);
+        ResponseEntity<?> response = accountController.createAccount(request);
 
         assertEquals(201, response.getStatusCodeValue());
         assertEquals(responseFromService, response.getBody());
-        verify(accountsService).createAccount(dto);
+        verify(accountsService).createAccount(request);
     }
 
     @Test
     void fetchAccountById_shouldReturnResponseFromService() {
-        Long accountId = 1L;
-        EntityResponse<Account> responseFromService = new EntityResponse<>();
+        String accountId = "1";
+
+        AccountDto accountDto = new AccountDto();
+        accountDto.setAccountId(accountId);
+        accountDto.setBicSwift("BIC123");
+        accountDto.setCustomerId("CUST001");
+
+        EntityResponse<AccountDto> responseFromService = new EntityResponse<>();
         responseFromService.setStatusCode(200);
         responseFromService.setMessage("Found");
-        responseFromService.setPayload(new Account());
+        responseFromService.setPayload(accountDto);  // Use AccountDto here
 
         when(accountsService.fetchAccountById(accountId)).thenReturn(responseFromService);
 
@@ -103,26 +109,20 @@ public class AccountControllerTests {
         int page = 1;
         int size = 10;
 
-        // Mock the Page<Account>
         Page<Account> mockedPage = new PageImpl<>(Collections.emptyList());
 
-        // Prepare the response
         EntityResponse<Page<Account>> responseFromService = new EntityResponse<>();
         responseFromService.setStatusCode(200);
         responseFromService.setMessage("Search results");
         responseFromService.setPayload(mockedPage);
 
-        // Mock service behavior
         when(accountsService.searchAccounts(any(AccountSearchRequest.class))).thenReturn(responseFromService);
 
-        // Call the controller method
         ResponseEntity<?> response = accountController.searchAccounts(iban, bicSwift, page, size);
 
-        // Validate response
         assertEquals(200, response.getStatusCodeValue());
         assertEquals(responseFromService, response.getBody());
 
-        // Capture and verify the request sent to service
         ArgumentCaptor<AccountSearchRequest> captor = ArgumentCaptor.forClass(AccountSearchRequest.class);
         verify(accountsService).searchAccounts(captor.capture());
 

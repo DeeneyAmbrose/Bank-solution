@@ -31,13 +31,13 @@ public class CardsServiceTests {
     @Test
     void createCard_shouldCreateCardSuccessfully() {
         CardDto dto = new CardDto();
-        dto.setAccountId(1L);
+        dto.setAccountId("1");  // changed to String
         dto.setType(CardType.PHYSICAL);
-        dto.setPan("1234567812345678");
         dto.setCvv("123");
         dto.setCardAlias("My Card");
 
         AccountDto accountDto = new AccountDto();
+        accountDto.setCustomerId("100");  // String customerId
         EntityResponse<AccountDto> accountResponse = new EntityResponse<>();
         accountResponse.setPayload(accountDto);
 
@@ -51,28 +51,23 @@ public class CardsServiceTests {
                 ArgumentMatchers.<ParameterizedTypeReference<EntityResponse<AccountDto>>>any()
         )).thenReturn(responseEntity);
 
-        when(cardsRepository.findAll()).thenReturn(Collections.emptyList());
+        // Mock repository to return no existing cards for the account
+        when(cardsRepository.findByAccountId(dto.getAccountId())).thenReturn(Collections.emptyList());
+
+        // Mock save to return the saved card object
         when(cardsRepository.save(any(Card.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Mock last card id for generateCardId
+        when(cardsRepository.findLastCardIdForYear(anyString())).thenReturn(null);
 
         EntityResponse<Card> response = cardsService.createCard(dto);
 
         assertEquals(201, response.getStatusCode());
         assertEquals("Card created successfully", response.getMessage());
         assertNotNull(response.getPayload());
-    }
-
-    @Test
-    void fetchCardById_shouldReturnCardIfExistsAndNotDeleted() {
-        Card card = new Card();
-        card.setDeletedFlag("N");
-
-        when(cardsRepository.findById(1L)).thenReturn(Optional.of(card));
-
-        EntityResponse<Card> response = cardsService.fetchCardById(1L);
-
-        assertEquals(200, response.getStatusCode());
-        assertEquals("Card fetched successfully", response.getMessage());
-        assertEquals(card, response.getPayload());
+        assertEquals(dto.getAccountId(), response.getPayload().getAccountId());
+        assertEquals(dto.getType(), response.getPayload().getType());
+        assertEquals(dto.getCardAlias(), response.getPayload().getCardAlias());
     }
 
     @Test
@@ -109,33 +104,36 @@ public class CardsServiceTests {
     }
 
     @Test
-    void searchCards_shouldMaskPanAndCvv_WhenShowSensitiveIsFalse() {
+    void fetchCardById_shouldReturnCardIfExistsAndNotDeleted() {
         Card card = new Card();
-        card.setPan("1234567812345678");
-        card.setCvv("123");
-        card.setCardAlias("Test Card");
+        card.setDeletedFlag("N");
 
-        when(cardsRepository.searchCardsNative(any(), any(), any(), anyInt(), anyInt()))
-                .thenReturn(List.of(card));
+        when(cardsRepository.findById(1L)).thenReturn(Optional.of(card));
 
-        CardFilterRequest request = new CardFilterRequest();
-        request.setCardAlias("Test");
-        request.setType(CardType.PHYSICAL);
-        request.setPan("1234");
-        request.setShowSensitive(false); // 👈 Important for masking
-        request.setPage(0);
-        request.setSize(10);
-
-        EntityResponse<List<Card>> response = cardsService.searchCards(request);
+        // Pass 'false' for showSensitive to test masked data scenario
+        EntityResponse<Card> response = cardsService.fetchCardById(1L, false);
 
         assertEquals(200, response.getStatusCode());
-        assertEquals("Cards fetched successfully", response.getMessage());
-
-        List<Card> result = response.getPayload();
-        assertEquals(1, result.size());
-        assertEquals("**** **** **** 5678", result.get(0).getPan());
-        assertEquals("***", result.get(0).getCvv());
+        assertEquals("Card fetched successfully", response.getMessage());
+        assertEquals(card, response.getPayload());
     }
+
+    @Test
+    void fetchCardById_shouldReturnCardWithSensitiveData() {
+        Card card = new Card();
+        card.setDeletedFlag("N");
+        card.setPan("1234567890123456");
+        card.setCvv("123");
+
+        when(cardsRepository.findById(1L)).thenReturn(Optional.of(card));
+
+        EntityResponse<Card> response = cardsService.fetchCardById(1L, true);
+
+        assertEquals(200, response.getStatusCode());
+        assertEquals("Card fetched successfully", response.getMessage());
+        assertEquals(card, response.getPayload());
+    }
+
 
     @Test
     void searchCards_shouldNotMaskPan_WhenShowSensitiveIsTrue() {

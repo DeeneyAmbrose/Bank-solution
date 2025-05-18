@@ -29,6 +29,11 @@ public class Card {
     private String deletedFlag = "N";
 
     @Column(nullable = false)
-    private Long accountId;
+    private String accountId;
+
+    private String cardId;
+
+    private String primaryCardFlag;
+
 
 }

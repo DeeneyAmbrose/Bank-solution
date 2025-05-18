@@ -11,12 +11,12 @@ public class AccountController {
     private final  AccountsService accountsService;
 
     @PostMapping
-    public ResponseEntity<?> createAccount(@RequestBody AccountDto accountDto) {
-        var response= accountsService.createAccount(accountDto);
+    public ResponseEntity<?> createAccount(@RequestBody AccountRequest accountRequest) {
+        var response= accountsService.createAccount(accountRequest);
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }
     @GetMapping
-    public ResponseEntity<?> fetchAccountById(@RequestParam Long accountId ) {
+    public ResponseEntity<?> fetchAccountById(@RequestParam String accountId ) {
         var response= accountsService.fetchAccountById(accountId);
         return ResponseEntity.status(response.getStatusCode()).body(response);
     }

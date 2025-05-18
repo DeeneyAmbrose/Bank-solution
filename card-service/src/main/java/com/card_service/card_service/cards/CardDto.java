@@ -5,9 +5,8 @@ import lombok.Data;
 @Data
 public class CardDto {
     private String cardAlias;
-    private Long accountId;
+    private String accountId;
     private CardType type;
-    private String pan;
     private String cvv;
 
 

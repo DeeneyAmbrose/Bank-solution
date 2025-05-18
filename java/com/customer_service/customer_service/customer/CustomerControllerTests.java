@@ -102,7 +102,7 @@ public class CustomerControllerTests {
         response.setMessage("Customer fetched successfully");
         response.setPayload(dto);
 
-        when(customerService.fetchById("1")).thenReturn(response);
+        when(customerService.fetchById(1L)).thenReturn(response);
 
         mockMvc.perform(get("/customers")
                         .param("customerId", "1"))
@@ -110,9 +110,8 @@ public class CustomerControllerTests {
                 .andExpect(jsonPath("$.message").value("Customer fetched successfully"))
                 .andExpect(jsonPath("$.payload.firstName").value("John"));
 
-        verify(customerService).fetchById("1");
+        verify(customerService).fetchById(1L);
     }
-
 
     @Test
     void searchCustomers_ShouldReturnOk() throws Exception {

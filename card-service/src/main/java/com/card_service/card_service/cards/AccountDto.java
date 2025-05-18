@@ -4,8 +4,7 @@ import lombok.Data;
 
 @Data
 public class AccountDto {
-    private Long id;
-    private String iban;
+    private String accountId;
     private String bicSwift;
-    private Long customerId;
+    private String customerId;
 }

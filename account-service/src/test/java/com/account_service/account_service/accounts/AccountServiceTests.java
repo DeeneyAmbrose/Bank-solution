@@ -32,14 +32,11 @@ public class AccountServiceTests {
         ReflectionTestUtils.setField(accountsService, "customerServiceUrl", "http://test-url/");
     }
 
-    // -- createAccount tests --
-
     @Test
     void createAccount_successfulCreation() {
-        AccountDto dto = new AccountDto();
-        dto.setCustomerId(1L);
-        dto.setIban("IBAN123");
-        dto.setBicSwift("BIC456");
+        AccountRequest request = new AccountRequest();
+        request.setCustomerId("1");  // customerId as String now
+        request.setBicSwift("BIC456");
 
         // Mock customer service call success
         EntityResponse<CustomerDto> customerResponseBody = new EntityResponse<>();
@@ -55,33 +52,37 @@ public class AccountServiceTests {
                 any(ParameterizedTypeReference.class)))
                 .thenReturn(customerResponseEntity);
 
-        // Mock IBAN not existing
-        when(accountsRepository.findByIban(dto.getIban())).thenReturn(Optional.empty());
+        // Mock findLastAccountNumberByPrefix (to generate next account number)
+        when(accountsRepository.findLastAccountNumberByPrefix(anyString())).thenReturn(null);
 
-        // Mock saving account (no return needed for void)
+        // Since IBAN is generated inside service, mock findByIban to return empty Optional
+        when(accountsRepository.findByIban(anyString())).thenReturn(Optional.empty());
+
+        // Mock save method to return the Account with an ID set as String
         doAnswer(invocation -> {
             Account account = invocation.getArgument(0);
-            account.setId(1L);
+            account.setAccountId("1100192500001");  // accountId is String
             return account;
         }).when(accountsRepository).save(any(Account.class));
 
-        EntityResponse<Account> response = accountsService.createAccount(dto);
+        EntityResponse<Account> response = accountsService.createAccount(request);
 
         assertEquals(HttpStatus.CREATED.value(), response.getStatusCode());
         assertEquals("Account created successfully", response.getMessage());
         assertNotNull(response.getPayload());
-        assertEquals(dto.getIban(), response.getPayload().getIban());
+        assertEquals(request.getCustomerId(), response.getPayload().getCustomerId());
+        assertNotNull(response.getPayload().getIban());
+        assertNotNull(response.getPayload().getAccountId());
 
         verify(restTemplate).exchange(anyString(), eq(HttpMethod.GET), isNull(), any(ParameterizedTypeReference.class));
-        verify(accountsRepository).findByIban(dto.getIban());
+        verify(accountsRepository).findByIban(anyString());
         verify(accountsRepository).save(any(Account.class));
     }
 
     @Test
     void createAccount_customerNotFound() {
-        AccountDto dto = new AccountDto();
-        dto.setCustomerId(1L);
-        dto.setIban("IBAN123");
+        AccountRequest request = new AccountRequest();
+        request.setCustomerId("1");
 
         ResponseEntity<EntityResponse<CustomerDto>> responseEntity =
                 new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
@@ -89,7 +90,7 @@ public class AccountServiceTests {
         when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), isNull(), any(ParameterizedTypeReference.class)))
                 .thenReturn(responseEntity);
 
-        EntityResponse<Account> response = accountsService.createAccount(dto);
+        EntityResponse<Account> response = accountsService.createAccount(request);
 
         assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode());
         assertEquals("Customer not found", response.getMessage());
@@ -100,9 +101,8 @@ public class AccountServiceTests {
 
     @Test
     void createAccount_ibanAlreadyExists() {
-        AccountDto dto = new AccountDto();
-        dto.setCustomerId(1L);
-        dto.setIban("IBAN123");
+        AccountRequest request = new AccountRequest();
+        request.setCustomerId("1");
 
         EntityResponse<CustomerDto> customerResponseBody = new EntityResponse<>();
         customerResponseBody.setStatusCode(200);
@@ -113,46 +113,56 @@ public class AccountServiceTests {
         when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), isNull(), any(ParameterizedTypeReference.class)))
                 .thenReturn(customerResponseEntity);
 
-        when(accountsRepository.findByIban(dto.getIban())).thenReturn(Optional.of(new Account()));
+        // Mock findLastAccountNumberByPrefix returns some last account number for sequence increment
+        when(accountsRepository.findLastAccountNumberByPrefix(anyString())).thenReturn("1100192500001");
 
-        EntityResponse<Account> response = accountsService.createAccount(dto);
+        // Mock that IBAN exists
+        when(accountsRepository.findByIban(anyString())).thenReturn(Optional.of(new Account()));
+
+        EntityResponse<Account> response = accountsService.createAccount(request);
 
         assertEquals(HttpStatus.CONFLICT.value(), response.getStatusCode());
         assertEquals("IBAN already exists", response.getMessage());
 
-        verify(accountsRepository).findByIban(dto.getIban());
+        verify(accountsRepository).findByIban(anyString());
         verify(accountsRepository, never()).save(any());
     }
 
     @Test
     void createAccount_exceptionHandling() {
-        AccountDto dto = new AccountDto();
+        AccountRequest request = new AccountRequest();
 
         when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), isNull(), any(ParameterizedTypeReference.class)))
                 .thenThrow(new RuntimeException("RestTemplate error"));
 
-        EntityResponse<Account> response = accountsService.createAccount(dto);
+        EntityResponse<Account> response = accountsService.createAccount(request);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), response.getStatusCode());
         assertTrue(response.getMessage().contains("Error:"));
     }
-
 
     // -- fetchAccountById tests --
 
     @Test
     void fetchAccountById_foundAndNotDeleted() {
         Account account = new Account();
-        account.setId(1L);
+        account.setAccountId("1100192500001"); // accountId is String
         account.setDeletedFlag("N");
+        account.setBicSwift("BIC123");
+        account.setCustomerId("1");            // customerId is String
 
-        when(accountsRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(accountsRepository.findByAccountId("1100192500001")).thenReturn(Optional.of(account));
 
-        EntityResponse<Account> response = accountsService.fetchAccountById(1L);
+        EntityResponse<AccountDto> response = accountsService.fetchAccountById("1100192500001");
 
         assertEquals(HttpStatus.OK.value(), response.getStatusCode());
         assertEquals("Account fetched successfully", response.getMessage());
-        assertEquals(account, response.getPayload());
+
+        AccountDto dto = response.getPayload();
+        assertNotNull(dto);
+        assertEquals(account.getBicSwift(), dto.getBicSwift());
+        assertEquals(account.getCustomerId(), dto.getCustomerId());
+        assertEquals(account.getAccountId(), dto.getAccountId());
     }
 
     @Test
@@ -160,9 +170,9 @@ public class AccountServiceTests {
         Account account = new Account();
         account.setDeletedFlag("Y");
 
-        when(accountsRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(accountsRepository.findByAccountId("1100192500001")).thenReturn(Optional.of(account));
 
-        EntityResponse<Account> response = accountsService.fetchAccountById(1L);
+        EntityResponse<AccountDto> response = accountsService.fetchAccountById("1100192500001");
 
         assertEquals(HttpStatus.GONE.value(), response.getStatusCode());
         assertEquals("Account has been deleted", response.getMessage());
@@ -171,9 +181,9 @@ public class AccountServiceTests {
 
     @Test
     void fetchAccountById_notFound() {
-        when(accountsRepository.findById(1L)).thenReturn(Optional.empty());
+        when(accountsRepository.findByAccountId("nonexistent")).thenReturn(Optional.empty());
 
-        EntityResponse<Account> response = accountsService.fetchAccountById(1L);
+        EntityResponse<AccountDto> response = accountsService.fetchAccountById("nonexistent");
 
         assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode());
         assertEquals("Account not found", response.getMessage());
@@ -181,9 +191,9 @@ public class AccountServiceTests {
 
     @Test
     void fetchAccountById_exception() {
-        when(accountsRepository.findById(anyLong())).thenThrow(new RuntimeException("DB error"));
+        when(accountsRepository.findByAccountId(anyString())).thenThrow(new RuntimeException("DB error"));
 
-        EntityResponse<Account> response = accountsService.fetchAccountById(1L);
+        EntityResponse<AccountDto> response = accountsService.fetchAccountById("1100192500001");
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), response.getStatusCode());
         assertTrue(response.getMessage().contains("Error:"));
@@ -197,59 +207,66 @@ public class AccountServiceTests {
         Account existingAccount = new Account();
         existingAccount.setDeletedFlag("N");
         existingAccount.setId(1L);
-        existingAccount.setIban("OLD_IBAN");
+        existingAccount.setBicSwift("OLD_BIC");
 
         when(accountsRepository.findById(1L)).thenReturn(Optional.of(existingAccount));
         doAnswer(invocation -> invocation.getArgument(0)).when(accountsRepository).save(any(Account.class));
 
         AccountDto dto = new AccountDto();
-        dto.setIban("NEW_IBAN");
         dto.setBicSwift("NEW_BIC");
 
         EntityResponse<Account> response = accountsService.editAccount(dto, 1L);
 
         assertEquals(HttpStatus.OK.value(), response.getStatusCode());
         assertEquals("Account updated successfully", response.getMessage());
-        assertEquals("NEW_IBAN", response.getPayload().getIban());
         assertEquals("NEW_BIC", response.getPayload().getBicSwift());
     }
 
     @Test
-    void editAccount_accountDeleted() {
+    void editAccount_cannotEditDeleted() {
         Account existingAccount = new Account();
         existingAccount.setDeletedFlag("Y");
 
         when(accountsRepository.findById(1L)).thenReturn(Optional.of(existingAccount));
 
         AccountDto dto = new AccountDto();
+        dto.setBicSwift("NEW_BIC");
 
         EntityResponse<Account> response = accountsService.editAccount(dto, 1L);
 
         assertEquals(HttpStatus.GONE.value(), response.getStatusCode());
         assertEquals("Cannot edit a deleted account", response.getMessage());
+
+        verify(accountsRepository, never()).save(any());
     }
 
     @Test
-    void editAccount_accountNotFound() {
+    void editAccount_notFound() {
         when(accountsRepository.findById(1L)).thenReturn(Optional.empty());
 
-        EntityResponse<Account> response = accountsService.editAccount(new AccountDto(), 1L);
+        AccountDto dto = new AccountDto();
+        dto.setBicSwift("NEW_BIC");
+
+        EntityResponse<Account> response = accountsService.editAccount(dto, 1L);
 
         assertEquals(HttpStatus.NOT_FOUND.value(), response.getStatusCode());
         assertEquals("Account not found", response.getMessage());
+
+        verify(accountsRepository, never()).save(any());
     }
 
     @Test
     void editAccount_exception() {
         when(accountsRepository.findById(anyLong())).thenThrow(new RuntimeException("DB error"));
 
-        EntityResponse<Account> response = accountsService.editAccount(new AccountDto(), 1L);
+        AccountDto dto = new AccountDto();
+        dto.setBicSwift("NEW_BIC");
+
+        EntityResponse<Account> response = accountsService.editAccount(dto, 1L);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), response.getStatusCode());
         assertTrue(response.getMessage().contains("Error:"));
     }
-
-
     // -- deleteAccount tests --
 
     @Test

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend-network
+
+  eureka-server:
+    build: ./discovery-service
+    container_name: eureka-server
+    ports:
+      - "${EUREKA_PORT}:${EUREKA_PORT}"
+    networks:
+      - backend-network
+    environment:
+      - SERVER_PORT=${EUREKA_PORT}
+
+  account-service:
+    build: ./account-service
+    container_name: account-service
+    ports:
+      - "${ACCOUNT_SERVICE_PORT}:${ACCOUNT_SERVICE_PORT}"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB_ACCOUNTS}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+      - SERVER_PORT=${ACCOUNT_SERVICE_PORT}
+      - SPRING_APPLICATION_NAME=account-service
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - backend-network
+
+  card-service:
+    build: ./card-service
+    container_name: card-service
+    ports:
+      - "${CARD_SERVICE_PORT}:${CARD_SERVICE_PORT}"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB_CARDS}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+      - SERVER_PORT=${CARD_SERVICE_PORT}
+      - SPRING_APPLICATION_NAME=card-service
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - backend-network
+
+  customer-service:
+    build: ./customer-service
+    container_name: customer-service
+    ports:
+      - "${CUSTOMER_SERVICE_PORT}:${CUSTOMER_SERVICE_PORT}"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB_CUSTOMERS}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}
+      - SERVER_PORT=${CUSTOMER_SERVICE_PORT}
+      - SPRING_APPLICATION_NAME=customer-service
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - backend-network
+
+volumes:
+  postgres-data:
+
+networks:
+  backend-network:
+    driver: bridge

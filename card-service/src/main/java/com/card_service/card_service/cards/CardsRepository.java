@@ -26,5 +26,9 @@ public interface CardsRepository extends JpaRepository<Card, Long> {
             @Param("offset") int offset
     );
 
-    List<Card> findByAccountId(Long accountId);
+    List<Card> findByAccountId(String accountId);
+
+    @Query(value = "SELECT card_id FROM cards WHERE card_id LIKE CONCAT(:prefix, '%') ORDER BY card_id DESC LIMIT 1", nativeQuery = true)
+    String findLastCardIdForYear(@Param("prefix") String prefix);
+
 }

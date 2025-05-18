@@ -23,11 +23,13 @@ public class CustomerService {
         EntityResponse<Customer> response = new EntityResponse<>();
         try {
             Customer customer = new Customer();
+            customer.setCustomerId(generateCustomerId());
             customer.setFirstName(customerDto.getFirstName());
             customer.setLastName(customerDto.getLastName());
             customer.setOtherName(customerDto.getOtherName());
             customer.setCreatedAt(LocalDate.now());
             customer.setDeletedFlag("N");
+
             Customer savedCustomer = customerRepository.save(customer);
 
             response.setPayload(savedCustomer);
@@ -39,6 +41,23 @@ public class CustomerService {
         }
         return response;
     }
+
+
+    public String generateCustomerId() {
+        String year = String.valueOf(LocalDate.now().getYear());
+        String prefix = "CUS" + year;
+        String lastId = customerRepository.findLastCustomerIdForYear(prefix);
+
+        int nextNumber = 1;
+        if (lastId != null && lastId.matches(prefix + "\\d{5}")) {
+            String numberPart = lastId.substring(prefix.length());
+            nextNumber = Integer.parseInt(numberPart) + 1;
+        }
+
+        return prefix + String.format("%05d", nextNumber);
+    }
+
+
 
     public EntityResponse<List<Customer>> fetchAll() {
         EntityResponse<List<Customer>> response = new EntityResponse<>();
@@ -62,9 +81,9 @@ public class CustomerService {
     }
 
 
-    public EntityResponse<CustomerDto> fetchById(Long customerId) {
+    public EntityResponse<CustomerDto> fetchById(String customerId) {
         EntityResponse<CustomerDto> response = new EntityResponse<>();
-        Customer customer = customerRepository.findById(customerId).orElse(null);
+        Customer customer = customerRepository.findByCustomerId(customerId);
 
         if (customer == null) {
             response.setMessage("Customer not found");

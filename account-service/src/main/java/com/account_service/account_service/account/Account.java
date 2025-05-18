@@ -12,6 +12,7 @@ public class Account {
 
     private String iban;
     private String bicSwift;
-    private Long customerId;
+    private String customerId;
+    private String accountId;
     private String deletedFlag ="N";
 }

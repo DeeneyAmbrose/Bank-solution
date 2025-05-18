@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -33,8 +34,8 @@ public class CardsService {
                             accountServiceUrl + "accounts?accountId=" + dto.getAccountId(),
                             HttpMethod.GET,
                             null,
-                            new ParameterizedTypeReference<>() {
-                            });
+                            new ParameterizedTypeReference<>() {}
+                    );
 
             if (!accountResponse.getStatusCode().is2xxSuccessful() || accountResponse.getBody() == null) {
                 response.setMessage("Account not found");
@@ -70,12 +71,17 @@ public class CardsService {
                 return response;
             }
 
+            // 6. Create new card
             Card card = new Card();
             card.setCardAlias(dto.getCardAlias());
             card.setAccountId(dto.getAccountId());
+            card.setCardId(generateCardId());
             card.setType(dto.getType());
-            card.setPan(dto.getPan());
+            card.setPan(generateCardId());
             card.setCvv(dto.getCvv());
+
+            // Set primaryCardFlag based on whether it's the first card
+            card.setPrimaryCardFlag(existingCards.isEmpty() ? "Y" : "N");
 
             cardsRepository.save(card);
 
@@ -90,14 +96,32 @@ public class CardsService {
         return response;
     }
 
+    public String generateCardId() {
+        String year = String.valueOf(LocalDate.now().getYear());
+        String prefix = "C" + year;
+        String lastId = cardsRepository.findLastCardIdForYear(prefix);
 
-    public EntityResponse<Card> fetchCardById(Long cardId) {
+        int nextNumber = 1;
+        if (lastId != null && lastId.startsWith(prefix)) {
+            String numberPart = lastId.substring(prefix.length());
+            nextNumber = Integer.parseInt(numberPart) + 1;
+        }
+
+        return prefix + String.format("%05d", nextNumber);
+    }
+
+
+    public EntityResponse<Card> fetchCardById(Long cardId, boolean showSensitive) {
         EntityResponse<Card> response = new EntityResponse<>();
         try {
             Optional<Card> optionalCard = cardsRepository.findById(cardId);
             if (optionalCard.isPresent()) {
                 Card card = optionalCard.get();
                 if ("N".equalsIgnoreCase(card.getDeletedFlag())) {
+                    if (!showSensitive) {
+                        card.setPan(maskPan(card.getPan()));
+                        card.setCvv("***");
+                    }
                     response.setPayload(card);
                     response.setMessage("Card fetched successfully");
                     response.setStatusCode(HttpStatus.OK.value());

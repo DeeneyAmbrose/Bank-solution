@@ -21,4 +21,9 @@ public interface AccountsRepository extends JpaRepository<Account, Long> {
                                  Pageable pageable);
 
     Optional<Account> findByIban(String iban);
+
+    @Query(value = "SELECT account_number FROM account WHERE account_number LIKE (:prefix || '%') ORDER BY account_number DESC LIMIT 1", nativeQuery = true)
+    String findLastAccountNumberByPrefix(@Param("prefix") String prefix);
+
+    Optional<Account> findByAccountId(String accountId);
 }
