@@ -2,6 +2,7 @@
 
 Bank solution API documentation 
 A modular banking application that exposes RESTful APIs for managing Customers, Accounts, and Cards. Each module is independently hosted and documented via Swagger UI.
+ Service-discovery is the Eureka, it runs on a default port. url: http://localhost:8761/eureka/
 Technologies used
 • Java 17+
 • Spring Boot
