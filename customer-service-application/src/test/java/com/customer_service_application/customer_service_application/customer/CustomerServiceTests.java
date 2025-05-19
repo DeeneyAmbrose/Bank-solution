@@ -1,6 +1,7 @@
 package com.customer_service_application.customer_service_application.customer;
 
 
+import com.customer_service_application.customer_service_application.utilities.EntityResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;

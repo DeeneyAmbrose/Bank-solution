@@ -20,7 +20,7 @@ public class RestTemplateConfig {
     public GroupedOpenApi groupedOpenApi() {
         return  GroupedOpenApi.builder()
                 .group("api")
-                .packagesToScan("com.customer_service.customer_service")
+                .packagesToScan("com.customer_service_application.customer_service_application")
                 .addOpenApiCustomizer(openApi -> {
                     openApi.getComponents()
                             .addSecuritySchemes(

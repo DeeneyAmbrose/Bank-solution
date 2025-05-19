@@ -9,13 +9,14 @@
         <outputRelativeToContentRoot value="true" />
         <module name="card-service" />
         <module name="account-service" />
-        <module name="customer-service" />
         <module name="discovery-service" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="api-gateway" target="17" />
       <module name="api-gateway (1)" target="17" />
+      <module name="customer-service" target="17" />
+      <module name="customer-service-application" target="17" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
@@ -25,6 +26,7 @@
       <module name="api-gateway (1)" options="-parameters" />
       <module name="card-service" options="-parameters" />
       <module name="customer-service" options="-parameters" />
+      <module name="customer-service-application" options="-parameters" />
       <module name="discovery-service" options="-parameters" />
     </option>
   </component>
